@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+import tkinter as tk
+from tkinter import messagebox, filedialog, simpledialog
+import os, subprocess
+
+class DangguoApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("黨國愛你 // Dangguoaini — Official Music Matrix")
+        self.root.geometry("540x480")
+        self.root.configure(bg="#C0C0C0")
+
+        tk.Label(root, text="黨國愛你 (Dangguoaini)", font=("Sans Bold", 15), bg="#C0C0C0", fg="#000080").pack(pady=(12, 2))
+        tk.Label(root, text="Status: Absolute Patriotic Stream | Ad-Free Sovereign Audio", font=("Sans", 9), bg="#C0C0C0", fg="#000000").pack(pady=(0, 8))
+
+        list_frame = tk.Frame(root, bg="#C0C0C0")
+        list_frame.pack(pady=5, fill=tk.BOTH, expand=True, padx=20)
+
+        scrollbar = tk.Scrollbar(list_frame, orient=tk.VERTICAL)
+        self.track_box = tk.Listbox(
+            list_frame,
+            bg="#FFFFFF",
+            fg="#000000",
+            selectbackground="#000080",
+            selectforeground="#FFFFFF",
+            font=("Sans", 11),
+            yscrollcommand=scrollbar.set
+        )
+        scrollbar.config(command=self.track_box.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.track_box.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.track_box.bind("<Double-1>", lambda e: self.play_music())
+
+        self.music_dir = "/usr/share/dangguoaini/music"
+        self.stream_file = "/usr/share/dangguoaini/streams.txt"
+        self.tracks = []
+        self.load_tracks()
+
+        self.now_playing = tk.Label(root, text="Ready // 準備就緒", font=("Sans Bold", 9), bg="#C0C0C0", fg="#000080")
+        self.now_playing.pack(pady=4)
+
+        btn_frame = tk.Frame(root, bg="#C0C0C0")
+        btn_frame.pack(pady=(5, 15))
+
+        tk.Button(btn_frame, text="▶ PLAY", command=self.play_music, width=9, font=("Sans Bold", 9), bg="#C0C0C0").pack(side=tk.LEFT, padx=3)
+        tk.Button(btn_frame, text="⏭ NEXT", command=self.next_track, width=9, font=("Sans Bold", 9), bg="#C0C0C0").pack(side=tk.LEFT, padx=3)
+        tk.Button(btn_frame, text="■ STOP", command=self.stop_music, width=9, font=("Sans Bold", 9), bg="#C0C0C0").pack(side=tk.LEFT, padx=3)
+        tk.Button(btn_frame, text="🌐 ADD YT URL", command=self.add_yt_url, width=12, font=("Sans Bold", 9), bg="#C0C0C0").pack(side=tk.LEFT, padx=3)
+        tk.Button(btn_frame, text="➕ FILE", command=self.add_local_file, width=8, font=("Sans Bold", 9), bg="#C0C0C0").pack(side=tk.LEFT, padx=3)
+
+        self.process = None
+
+    def load_tracks(self):
+        self.track_box.delete(0, tk.END)
+        self.tracks = []
+
+        if os.path.exists(self.stream_file):
+            with open(self.stream_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if "|" in line and not line.startswith("#"):
+                        title, url = line.split("|", 1)
+                        self.tracks.append(url.strip())
+                        self.track_box.insert(tk.END, title.strip())
+
+        if os.path.exists(self.music_dir):
+            for file in sorted(os.listdir(self.music_dir)):
+                if file.lower().endswith((".mp3", ".wav", ".ogg", ".m4a", ".flac")):
+                    self.tracks.append(os.path.join(self.music_dir, file))
+                    self.track_box.insert(tk.END, os.path.splitext(file)[0])
+
+    def play_music(self):
+        self.stop_music()
+        sel = self.track_box.curselection()
+        if not sel:
+            messagebox.showwarning("System Notification", "Please select a State-Approved track first, Compatriot!")
+            return
+        idx = sel[0]
+        target = self.tracks[idx]
+        song_name = self.track_box.get(idx)
+        self.now_playing.config(text=f"▶ 正在播放: {song_name}")
+        self.process = subprocess.Popen(["mpv", "--no-video", "--ytdl-format=140/bestaudio[ext=m4a]/bestaudio", "--audio-samplerate=48000", "--cache=yes", "--cache-secs=20", "--demuxer-readahead-secs=20", "--audio-buffer=1.0", target])
+
+    def next_track(self):
+        if not self.tracks:
+            return
+        sel = self.track_box.curselection()
+        next_idx = (sel[0] + 1) % len(self.tracks) if sel else 0
+        self.track_box.selection_clear(0, tk.END)
+        self.track_box.selection_set(next_idx)
+        self.track_box.see(next_idx)
+        self.play_music()
+
+    def stop_music(self):
+        if self.process:
+            self.process.terminate()
+            self.process = None
+        self.now_playing.config(text="Stopped // 已停止")
+
+    def add_yt_url(self):
+        title = simpledialog.askstring("Add Patriotic Track", "Enter Song Title (e.g., 黃埔軍校校歌):")
+        if not title:
+            return
+        url = simpledialog.askstring("Add Patriotic Track", "Paste YouTube URL:")
+        if url:
+            self.tracks.append(url.strip())
+            self.track_box.insert(tk.END, title.strip())
+
+    def add_local_file(self):
+        file_path = filedialog.askopenfilename(
+            title="Select Audio File",
+            filetypes=[("Audio Files", "*.mp3 *.wav *.ogg *.m4a *.flac")]
+        )
+        if file_path:
+            self.tracks.append(file_path)
+            self.track_box.insert(tk.END, os.path.splitext(os.path.basename(file_path))[0])
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = DangguoApp(root)
+    root.protocol("WM_DELETE_WINDOW", lambda: (app.stop_music(), root.destroy()))
+    root.mainloop()

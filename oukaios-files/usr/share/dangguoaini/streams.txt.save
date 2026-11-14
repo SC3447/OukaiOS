@@ -1,0 +1,69 @@
+sudo mkdir -p /usr/share/dangguoaini
+
+python3 - << 'EOF'
+from html.parser import HTMLParser
+import os
+
+html_path = os.path.expanduser("~/Desktop/bookmarks.html")
+out_path = "/tmp/streams.txt"
+
+class BookmarkParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.in_h3 = False
+        self.in_a = False
+        self.current_folder = ""
+        self.in_oukai_folder = False
+        self.dl_depth = 0
+        self.target_depth = 0
+        self.current_href = ""
+        self.current_title = ""
+        self.tracks = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "dl":
+            self.dl_depth += 1
+        elif tag == "h3":
+            self.in_h3 = True
+            self.current_folder = ""
+        elif tag == "a" and self.in_oukai_folder:
+            self.in_a = True
+            self.current_title = ""
+            self.current_href = dict(attrs).get("href", "")
+
+    def handle_endtag(self, tag):
+        if tag == "dl":
+            if self.in_oukai_folder and self.dl_depth == self.target_depth:
+                self.in_oukai_folder = False
+            self.dl_depth -= 1
+        elif tag == "h3":
+            self.in_h3 = False
+            if self.current_folder.strip() == "oukai_music":
+                self.in_oukai_folder = True
+                self.target_depth = self.dl_depth + 1
+        elif tag == "a" and self.in_a:
+            self.in_a = False
+            title = self.current_title.replace(" - YouTube", "").strip()
+            if self.current_href.startswith("http"):
+                self.tracks.append(f"{title} | {self.current_href}")
+
+    def handle_data(self, data):
+        if self.in_h3:
+            self.current_folder += data
+        elif self.in_a:
+            self.current_title += data
+
+with open(html_path, "r", encoding="utf-8") as f:
+    parser = BookmarkParser()
+    parser.feed(f.read())
+
+with open(out_path, "w", encoding="utf-8") as out:
+    out.write("\n".join(parser.tracks) + "\n")
+
+print(f"Successfully extracted {len(parser.tracks)} tracks from oukai_music!")
+EOF
+
+sudo mv /tmp/streams.txt /usr/share/dangguoaini/streams.txt
+sudo chmod 644 /usr/share/dangguoaini/streams.txt
+
+

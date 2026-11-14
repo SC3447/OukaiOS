@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=OukaiOS
+Description=OukaiOS Sovereign Boot Splash
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/oukai
+ScriptFile=/usr/share/plymouth/themes/oukai/oukai.script

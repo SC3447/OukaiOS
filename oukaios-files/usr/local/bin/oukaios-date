@@ -1,0 +1,5 @@
+#!/bin/bash
+CE_YEAR=$(date +%Y)
+MINGUO_YEAR=$((CE_YEAR - 1911))
+REST_OF_DATE=$(date +"%m月%d日 %H:%M:%S")
+echo "民國${MINGUO_YEAR}年 ${REST_OF_DATE}"
