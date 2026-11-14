@@ -1,0 +1,39 @@
+name: Build OukaiOS 1.0 ISO
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Free up cloud runner disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost
+
+      - name: Install ISO packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xorriso squashfs-tools live-build debootstrap
+
+      - name: Build OukaiOS 1.0 Base & Customizations
+        run: |
+          mkdir -p build && cd build
+          lb config --distribution trixie --binary-images iso-hybrid --archive-areas "main contrib non-free non-free-firmware"
+          mkdir -p config/includes.chroot/etc/skel
+          cp -r ../oukaios-files/* config/includes.chroot/ 2>/dev/null || true
+          sudo lb build
+          mv live-image-amd64.hybrid.iso ../OukaiOS-1.0.iso
+
+      - name: Publish OukaiOS-1.0.iso to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0
+          name: "歐開OS (OukaiOS) 1.0 — Official Release"
+          files: OukaiOS-1.0.iso
